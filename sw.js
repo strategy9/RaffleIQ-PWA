@@ -1,15 +1,18 @@
-﻿const CACHE_NAME = 'raffleiq-admin-v1';
-const urlsToCache = [
-  '/admin-monitor.html',
-  '/manifest.json',
-  // Add any other static assets here
-];
+﻿//v3
 
-// Install event - cache resources
+const CACHE_NAME = 'raffleiq-admin-v1';
+
+// Install event - minimal caching to avoid errors
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+      .then((cache) => {
+        // Only cache the current page, no other resources
+        return cache.add(self.location.href).catch(() => {
+          // If even this fails, continue anyway
+          return Promise.resolve();
+        });
+      })
       .then(() => self.skipWaiting())
   );
 });
