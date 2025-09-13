@@ -1,4 +1,4 @@
-﻿//v7
+﻿//v8
 
 const CACHE_NAME = 'raffleiq-admin-v1';
 

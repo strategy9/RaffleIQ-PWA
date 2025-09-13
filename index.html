@@ -752,10 +752,18 @@
             }
         }
 
-        // Initialize the PWA
-        document.addEventListener('DOMContentLoaded', () => {
+        // Initialize the PWA - handle both cases where DOM is ready or still loading
+        function initializePWA() {
+            console.log('Starting PWA initialization...');
             new RaffleAdminPWA();
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePWA);
+        } else {
+            // DOM is already loaded
+            initializePWA();
+        }
 
         // Request notification permission only after user interaction
         // Don't request automatically on page load
