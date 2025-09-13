@@ -212,8 +212,14 @@
 
         function showError(message) {
             const errorDiv = document.getElementById('loginError');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
+            if (errorDiv) {  // Only try to show error if login modal still exists
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('hidden');
+            } else {
+                // Login modal was removed, show as notification instead
+                console.error('Login error:', message);
+                showNotification(message, 'error');
+            }
         }
 
         function showDashboard() {
