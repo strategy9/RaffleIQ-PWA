@@ -22,10 +22,16 @@
                         🎫 RaffleIQ Admin
                     </h1>
                     <p class="text-gray-600 text-sm" id="lastUpdated">Last updated: Never</p>
+                    <p class="text-gray-500 text-xs" id="currentTenant"></p>
                 </div>
-                <button id="refreshBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-                    🔄 Refresh
-                </button>
+                <div class="flex gap-2">
+                    <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm" style="display: none;">
+                        🚪 Logout
+                    </button>
+                    <button id="refreshBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                        🔄 Refresh
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -160,7 +166,6 @@
             const tenantUrl = document.getElementById('tenantUrl').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('loginError');
 
             if (!tenantUrl || !username || !password) {
                 showError('Please fill in all fields');
@@ -212,24 +217,22 @@
 
         function showError(message) {
             const errorDiv = document.getElementById('loginError');
-            if (errorDiv) {  // Only try to show error if login modal still exists
+            if (errorDiv) {
                 errorDiv.textContent = message;
                 errorDiv.classList.remove('hidden');
-            } else {
-                // Login modal was removed, show as notification instead
-                console.error('Login error:', message);
-                showNotification(message, 'error');
             }
         }
 
         function showDashboard() {
             console.log('Showing dashboard...');
-            document.getElementById('refreshBtn').addEventListener('click', loadData);
-            document.getElementById('logoutBtn').addEventListener('click', logout);
 
-            // Display current tenant URL
+            // Show logout button and tenant info
+            document.getElementById('logoutBtn').style.display = 'flex';
             const tenantUrl = new URL(baseUrl).hostname;
             document.getElementById('currentTenant').textContent = `Connected to: ${tenantUrl}`;
+
+            document.getElementById('refreshBtn').addEventListener('click', loadData);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
 
             loadData();
 
@@ -243,17 +246,12 @@
             // Clear authentication
             clearAuth();
 
-            // Remove any existing login modal
-            const existingModal = document.querySelector('.fixed.inset-0');
-            if (existingModal) {
-                existingModal.remove();
-            }
-
             // Reset display
-            document.getElementById('raffleGrid').classList.add('hidden');
-            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('logoutBtn').style.display = 'none';
             document.getElementById('currentTenant').textContent = '';
             document.getElementById('lastUpdated').textContent = 'Last updated: Never';
+            document.getElementById('raffleGrid').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
 
             // Clear summary cards
             document.getElementById('activeCount').textContent = '-';
@@ -261,7 +259,6 @@
             document.getElementById('totalTickets').textContent = '-';
             document.getElementById('endingSoon').textContent = '-';
 
-            // Show login modal
             showNotification('Logged out successfully');
             showLogin();
         }
@@ -326,14 +323,21 @@
                 return;
             }
 
-            grid.innerHTML = raffles.map(raffle => `
+            grid.innerHTML = raffles.map(raffle => {
+                const now = new Date();
+                const endDate = new Date(raffle.eventEnd);
+                const isEndingSoon = endDate > now && (endDate - now) <= (24 * 60 * 60 * 1000); // 24 hours
+
+                return `
                 <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-xl hover:shadow-2xl transition-shadow">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <h3 class="text-lg font-bold text-gray-900">${raffle.eventName}</h3>
                             <p class="text-sm text-gray-600">ID: ${raffle.id}</p>
                         </div>
-                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Active</span>
+                        <span class="px-3 py-1 ${isEndingSoon ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'} rounded-full text-sm">
+                            ${isEndingSoon ? 'Ending Soon' : 'Active'}
+                        </span>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -347,12 +351,45 @@
                         </div>
                     </div>
 
-                    <a href="${baseUrl}/App/Raffles/Manage/${raffle.encryptedId}" target="_blank"
-                       class="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors">
-                        Manage Raffle
-                    </a>
+                    <div class="flex gap-2">
+                        <a href="${baseUrl}/App/Raffles/Manage/${raffle.encryptedId}" target="_blank"
+                           class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors text-sm">
+                            Manage
+                        </a>
+                        <button onclick="endSales(${raffle.id}, '${raffle.eventName}')"
+                                class="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded-lg transition-colors text-sm">
+                            End Sales
+                        </button>
+                    </div>
                 </div>
-            `).join('');
+            `;}).join('');
+        }
+
+        async function endSales(raffleId, raffleName) {
+            if (!confirm(`End ticket sales for "${raffleName}"? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/services/app/Raffles/UpdateEventEndDateToCurrentTime`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: raffleId })
+                });
+
+                if (response.ok) {
+                    showNotification(`Sales ended for "${raffleName}"`);
+                    loadData(); // Refresh the dashboard
+                } else {
+                    showNotification('Failed to end sales', 'error');
+                }
+            } catch (error) {
+                console.error('End sales error:', error);
+                showNotification('Failed to end sales', 'error');
+            }
         }
 
         function formatNumber(num) {
