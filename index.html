@@ -399,94 +399,24 @@
             }).format(num);
         }
 
-        function showNotification(message, type = 'success', duration = null) {
-            const container = document.getElementById('notificationContainer');
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
 
-            // Create notification element
-            const notification = document.createElement('div');
-            const notificationId = 'notification_' + Date.now();
-            notification.id = notificationId;
+            let bgColor = 'bg-green-600';
+            if (type === 'error') bgColor = 'bg-red-600';
+            if (type === 'warning') bgColor = 'bg-yellow-600';
 
-            // Set colors and icons based on type
-            let bgColor, icon, textColor = 'text-white';
-            let defaultDuration = 4000;
-
-            switch (type) {
-                case 'success':
-                    bgColor = 'bg-green-600';
-                    icon = '✅';
-                    break;
-                case 'error':
-                    bgColor = 'bg-red-600';
-                    icon = '❌';
-                    defaultDuration = 6000;
-                    break;
-                case 'warning':
-                    bgColor = 'bg-yellow-600';
-                    icon = '⚠️';
-                    defaultDuration = 8000;
-                    break;
-                case 'info':
-                    bgColor = 'bg-blue-600';
-                    icon = 'ℹ️';
-                    break;
-                default:
-                    bgColor = 'bg-gray-600';
-                    icon = '';
-            }
-
-            // Build notification HTML
-            notification.className = `${bgColor} ${textColor} p-4 rounded-lg shadow-lg max-w-sm transform translate-x-full transition-all duration-300 pointer-events-auto`;
-            notification.innerHTML = `
-                <div class="flex items-start space-x-3">
-                    <div class="flex-shrink-0 text-lg">${icon}</div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium leading-5">${message}</p>
-                    </div>
-                    <button onclick="dismissNotification('${notificationId}')" class="flex-shrink-0 ml-2 text-white hover:text-gray-200 transition-colors">
-                        <span class="text-lg">×</span>
-                    </button>
-                </div>
-            `;
-
-            // Add to container
-            container.appendChild(notification);
-
-            // Force reflow then show
-            notification.offsetHeight;
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg transition-transform z-50 ${bgColor} text-white`;
             notification.classList.remove('translate-x-full');
-            notification.classList.add('translate-x-0');
 
-            // Auto dismiss
-            const showDuration = duration || defaultDuration;
+            // Show warning notifications longer
+            const duration = type === 'warning' ? 8000 : 3000;
+
             setTimeout(() => {
-                dismissNotification(notificationId);
-            }, showDuration);
-
-            // Auto-remove old notifications if too many
-            const notifications = container.children;
-            if (notifications.length > 3) {
-                dismissNotification(notifications[0].id);
-            }
-        }
-
-        function dismissNotification(notificationId) {
-            const notification = document.getElementById(notificationId);
-            if (notification) {
-                notification.classList.remove('translate-x-0');
                 notification.classList.add('translate-x-full');
-
-                // Remove from DOM after animation
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 300);
-            }
+            }, duration);
         }
-
-        // Make dismissNotification global for onclick handlers
-        window.dismissNotification = dismissNotification;
 
         function clearAuth() {
             accessToken = null;
