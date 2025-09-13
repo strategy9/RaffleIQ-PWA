@@ -219,10 +219,45 @@
         function showDashboard() {
             console.log('Showing dashboard...');
             document.getElementById('refreshBtn').addEventListener('click', loadData);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+
+            // Display current tenant URL
+            const tenantUrl = new URL(baseUrl).hostname;
+            document.getElementById('currentTenant').textContent = `Connected to: ${tenantUrl}`;
+
             loadData();
 
             // Auto refresh every 30 seconds
             setInterval(loadData, 30000);
+        }
+
+        function logout() {
+            console.log('Logging out...');
+
+            // Clear authentication
+            clearAuth();
+
+            // Remove any existing login modal
+            const existingModal = document.querySelector('.fixed.inset-0');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Reset display
+            document.getElementById('raffleGrid').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('currentTenant').textContent = '';
+            document.getElementById('lastUpdated').textContent = 'Last updated: Never';
+
+            // Clear summary cards
+            document.getElementById('activeCount').textContent = '-';
+            document.getElementById('totalRevenue').textContent = '-';
+            document.getElementById('totalTickets').textContent = '-';
+            document.getElementById('endingSoon').textContent = '-';
+
+            // Show login modal
+            showNotification('Logged out successfully');
+            showLogin();
         }
 
         async function loadData() {
