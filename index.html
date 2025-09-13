@@ -755,7 +755,12 @@
         // Initialize the PWA - handle both cases where DOM is ready or still loading
         function initializePWA() {
             console.log('Starting PWA initialization...');
-            new RaffleAdminPWA();
+            try {
+                const pwaInstance = new RaffleAdminPWA();
+                console.log('PWA instance created successfully');
+            } catch (error) {
+                console.error('Failed to create PWA instance:', error);
+            }
         }
 
         if (document.readyState === 'loading') {
