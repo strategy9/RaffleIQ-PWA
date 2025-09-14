@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎫</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sonner@1.4.41/dist/index.umd.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen">
 
@@ -69,10 +70,6 @@
         <div id="alerts" class="space-y-4 mb-6"></div>
     </div>
 
-    <!-- Notification Toast -->
-    <div id="notification" class="fixed top-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg transform translate-x-full transition-transform z-50">
-    </div>
-
     <script>
         console.log('Script starting...');
 
@@ -80,6 +77,9 @@
         let baseUrl = window.location.origin;
         let accessToken = null;
         let refreshToken = null;
+
+        // Initialize Sonner toaster
+        const { toast } = window.Sonner;
 
         // Initialize
         function init() {
@@ -205,7 +205,7 @@
                     // Remove login modal
                     document.querySelector('.fixed.inset-0').remove();
 
-                    showNotification('Login successful!');
+                    toast.success('Login successful! 🎉');
                     showDashboard();
                 } else {
                     showError(data.error?.message || 'Login failed');
@@ -259,7 +259,7 @@
             document.getElementById('totalTickets').textContent = '-';
             document.getElementById('endingSoon').textContent = '-';
 
-            showNotification('Logged out successfully');
+            toast.success('Logged out successfully');
             showLogin();
         }
 
@@ -280,11 +280,11 @@
                     showLogin();
                 } else {
                     console.error('Failed to load data');
-                    showNotification('Failed to load data', 'error');
+                    toast.error('Failed to load data');
                 }
             } catch (error) {
                 console.error('Data load error:', error);
-                showNotification('Connection error', 'error');
+                toast.error('Connection error');
             }
 
             // Load raffles
@@ -381,14 +381,14 @@
                 });
 
                 if (response.ok) {
-                    showNotification(`Sales ended for "${raffleName}"`);
+                    toast.success(`Sales ended for "${raffleName}"`);
                     loadData(); // Refresh the dashboard
                 } else {
-                    showNotification('Failed to end sales', 'error');
+                    toast.error('Failed to end sales');
                 }
             } catch (error) {
                 console.error('End sales error:', error);
-                showNotification('Failed to end sales', 'error');
+                toast.error('Failed to end sales');
             }
         }
 
@@ -400,22 +400,14 @@
         }
 
         function showNotification(message, type = 'success') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-
-            let bgColor = 'bg-green-600';
-            if (type === 'error') bgColor = 'bg-red-600';
-            if (type === 'warning') bgColor = 'bg-yellow-600';
-
-            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg transition-transform z-50 ${bgColor} text-white`;
-            notification.classList.remove('translate-x-full');
-
-            // Show warning notifications longer
-            const duration = type === 'warning' ? 8000 : 3000;
-
-            setTimeout(() => {
-                notification.classList.add('translate-x-full');
-            }, duration);
+            // Legacy function - now uses Sonner
+            if (type === 'error') {
+                toast.error(message);
+            } else if (type === 'warning') {
+                toast.warning(message);
+            } else {
+                toast.success(message);
+            }
         }
 
         function clearAuth() {
