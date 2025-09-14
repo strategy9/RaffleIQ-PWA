@@ -8,9 +8,11 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎫</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sonner@1.4.41/dist/index.umd.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen">
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
     <!-- Main Container -->
     <div class="container mx-auto p-4 max-w-6xl">
@@ -78,8 +80,52 @@
         let accessToken = null;
         let refreshToken = null;
 
-        // Initialize Sonner toaster
-        const { toast } = window.Sonner;
+        // Toast notification system
+        const toast = {
+            success: (message) => showToast(message, 'success'),
+            error: (message) => showToast(message, 'error'),
+            warning: (message) => showToast(message, 'warning'),
+            info: (message) => showToast(message, 'info')
+        };
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toastEl = document.createElement('div');
+
+            // Set colors and icons based on type
+            const styles = {
+                success: { bg: 'bg-green-500', icon: '✅' },
+                error: { bg: 'bg-red-500', icon: '❌' },
+                warning: { bg: 'bg-yellow-500', icon: '⚠️' },
+                info: { bg: 'bg-blue-500', icon: 'ℹ️' }
+            };
+
+            const style = styles[type] || styles.info;
+
+            toastEl.className = `${style.bg} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transform transition-all duration-300 translate-x-full`;
+            toastEl.innerHTML = `
+                <span class="text-lg">${style.icon}</span>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toastEl);
+
+            // Animate in
+            setTimeout(() => {
+                toastEl.classList.remove('translate-x-full');
+                toastEl.classList.add('translate-x-0');
+            }, 10);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toastEl.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => {
+                    if (toastEl.parentNode) {
+                        toastEl.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
 
         // Initialize
         function init() {
@@ -111,7 +157,7 @@
             console.log('Showing login modal...');
 
             const loginHtml = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
                         <div class="p-6">
                             <div class="text-center mb-6">
@@ -141,7 +187,7 @@
                                     <input type="password" id="password" class="block w-full px-3 py-2 border border-gray-300 rounded-md" required>
                                 </div>
 
-                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
+                                <button type="submit" id="loginSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
                                     Sign In
                                 </button>
 
@@ -163,12 +209,19 @@
             e.preventDefault();
             console.log('Handling login...');
 
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+
             const tenantUrl = document.getElementById('tenantUrl').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
             if (!tenantUrl || !username || !password) {
                 showError('Please fill in all fields');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
                 return;
             }
 
@@ -203,15 +256,19 @@
                     localStorage.setItem('raffleiq_tenant_url', baseUrl);
 
                     // Remove login modal
-                    document.querySelector('.fixed.inset-0').remove();
+                    document.getElementById('loginModal').remove();
 
                     toast.success('Login successful! 🎉');
                     showDashboard();
                 } else {
                     showError(data.error?.message || 'Login failed');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
                 }
             } catch (error) {
                 showError('Connection failed. Check URL and try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         }
 
@@ -276,15 +333,16 @@
                     updateSummary(data.result);
                 } else if (response.status === 401) {
                     // Token expired
+                    toast.error('Session expired. Please login again.');
                     clearAuth();
                     showLogin();
                 } else {
                     console.error('Failed to load data');
-                    toast.error('Failed to load data');
+                    toast.error('Failed to load dashboard data');
                 }
             } catch (error) {
                 console.error('Data load error:', error);
-                toast.error('Connection error');
+                toast.error('Connection error. Please check your network.');
             }
 
             // Load raffles
@@ -356,7 +414,7 @@
                            class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors text-sm">
                             Manage
                         </a>
-                        <button onclick="endSales(${raffle.id}, '${raffle.eventName}')"
+                        <button onclick="endSales(${raffle.id}, '${raffle.eventName.replace(/'/g, "\\'")}')"
                                 class="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded-lg transition-colors text-sm">
                             End Sales
                         </button>
@@ -384,11 +442,11 @@
                     toast.success(`Sales ended for "${raffleName}"`);
                     loadData(); // Refresh the dashboard
                 } else {
-                    toast.error('Failed to end sales');
+                    toast.error('Failed to end sales. Please try again.');
                 }
             } catch (error) {
                 console.error('End sales error:', error);
-                toast.error('Failed to end sales');
+                toast.error('Connection error. Please try again.');
             }
         }
 
@@ -397,62 +455,6 @@
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 2
             }).format(num);
-        }
-
-        function showNotification(message, type = 'success') {
-            // Check if Sonner is available
-            if (window.Sonner && window.Sonner.toast) {
-                if (type === 'error') {
-                    window.Sonner.toast.error(message);
-                } else if (type === 'warning') {
-                    window.Sonner.toast.warning(message);
-                } else {
-                    window.Sonner.toast.success(message);
-                }
-            } else {
-                // Fallback to simple toast
-                showFallbackToast(message, type);
-            }
-        }
-
-        function showFallbackToast(message, type = 'success') {
-            const container = document.getElementById('fallbackToastContainer');
-            const toast = document.createElement('div');
-
-            let bgColor = 'bg-green-600';
-            let icon = '✅';
-            if (type === 'error') {
-                bgColor = 'bg-red-600';
-                icon = '❌';
-            } else if (type === 'warning') {
-                bgColor = 'bg-yellow-600';
-                icon = '⚠️';
-            }
-
-            toast.className = `${bgColor} text-white p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
-            toast.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <span>${icon}</span>
-                    <span>${message}</span>
-                </div>
-            `;
-
-            container.appendChild(toast);
-
-            // Animate in
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full');
-            }, 100);
-
-            // Animate out and remove
-            setTimeout(() => {
-                toast.classList.add('translate-x-full');
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                }, 300);
-            }, 3000);
         }
 
         function clearAuth() {
