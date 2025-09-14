@@ -400,14 +400,59 @@
         }
 
         function showNotification(message, type = 'success') {
-            // Legacy function - now uses Sonner
-            if (type === 'error') {
-                toast.error(message);
-            } else if (type === 'warning') {
-                toast.warning(message);
+            // Check if Sonner is available
+            if (window.Sonner && window.Sonner.toast) {
+                if (type === 'error') {
+                    window.Sonner.toast.error(message);
+                } else if (type === 'warning') {
+                    window.Sonner.toast.warning(message);
+                } else {
+                    window.Sonner.toast.success(message);
+                }
             } else {
-                toast.success(message);
+                // Fallback to simple toast
+                showFallbackToast(message, type);
             }
+        }
+
+        function showFallbackToast(message, type = 'success') {
+            const container = document.getElementById('fallbackToastContainer');
+            const toast = document.createElement('div');
+
+            let bgColor = 'bg-green-600';
+            let icon = '✅';
+            if (type === 'error') {
+                bgColor = 'bg-red-600';
+                icon = '❌';
+            } else if (type === 'warning') {
+                bgColor = 'bg-yellow-600';
+                icon = '⚠️';
+            }
+
+            toast.className = `${bgColor} text-white p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${icon}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
         }
 
         function clearAuth() {
