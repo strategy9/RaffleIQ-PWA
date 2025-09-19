@@ -215,11 +215,12 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Signing in...';
 
-            const tenantUrl = document.getElementById('tenantUrl').value.trim();
+            const tenantSelect = document.getElementById('tenantSelect');
+            const tenantName = tenantSelect ? tenantSelect.value : '';
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
-            if (!tenantUrl || !username || !password) {
+            if (!tenantName || !username || !password) {
                 showError('Please fill in all fields');
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
@@ -227,12 +228,8 @@
             }
 
             // Normalize URL
-            let normalizedUrl;
-            if (tenantUrl.startsWith('http')) {
-                normalizedUrl = tenantUrl;
-            } else {
-                normalizedUrl = `https://${tenantUrl}`;
-            }
+            // Construct URL from tenant name
+            const normalizedUrl = `https://${tenantName}.raffleiq.us`;
 
             try {
                 const response = await fetch(`${normalizedUrl}/api/TokenAuth/Authenticate`, {
