@@ -168,23 +168,24 @@
 
                             <form id="loginForm" class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Organization URL</label>
-                                    <div class="relative">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 text-sm">https://</span>
-                                        </div>
-                                        <input type="text" id="tenantUrl" class="block w-full pl-16 pr-3 py-2 border border-gray-300 rounded-md" placeholder="unlv.raffleiq.us" required>
-                                    </div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                                    <select id="tenantSelect" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                                        <option value="">Select Organization</option>
+                                        <option value="unlv">UNLV</option>
+                                        <option value="olemiss">Ole Miss</option>
+                                        <option value="default">Default</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500" id="selectedUrl"></p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Username/Email</label>
-                                    <input type="text" id="username" class="block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                                    <input type="text" id="username" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                                    <input type="password" id="password" class="block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                                    <input type="password" id="password" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
                                 </div>
 
                                 <button type="submit" id="loginSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
