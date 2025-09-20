@@ -353,6 +353,9 @@
             return;
         }
     
+        // Show loading state
+        document.getElementById('chartLastUpdate').textContent = 'Loading...';
+
         console.log('Loading chart data - Raffle:', selectedRaffleId, 'Hours:', currentTimeRange);
     
         try {
@@ -402,7 +405,22 @@
                 console.error('Invalid data or chart not initialized');
                 return;
             }
-
+            // Check if there's actually data to display
+            if (data.totalVisits === 0 && data.successfulPurchases === 0) {
+                // Show a "no data" message on the chart
+                visitChart.data.labels = ['No data available'];
+                visitChart.data.datasets.forEach(dataset => {
+                    dataset.data = [0];
+                });
+                visitChart.options.plugins.title = {
+                    display: true,
+                    text: 'No visits recorded in this time period'
+                };
+                visitChart.update('none');
+        
+                document.getElementById('chartLastUpdate').textContent = 'No data for selected period';
+                return;
+            }
             // Update summary cards with fallback values
             document.getElementById('chartVisits').textContent = formatNumber(data.totalVisits || 0);
             document.getElementById('chartSuccess').textContent = formatNumber(data.successfulPurchases || 0);
