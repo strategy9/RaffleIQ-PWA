@@ -59,16 +59,15 @@
             </div>
         </div>
 
-        <!-- Add this after the Summary Cards section and before the Loading section -->
         <!-- Visit Analytics Chart -->
         <div id="visitAnalyticsSection" class="bg-white/95 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-xl hidden">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h3 class="text-lg font-bold text-gray-900">📊 Visit & Purchase Analytics</h3>
-                <div class="flex gap-2">
-                    <div class="btn-group">
-                        <button class="time-range-btn px-3 py-1 bg-indigo-600 text-white rounded-l-lg text-sm" data-hours="1">1 Hour</button>
-                        <button class="time-range-btn px-3 py-1 bg-gray-200 text-gray-700 text-sm" data-hours="2">2 Hours</button>
-                        <button class="time-range-btn px-3 py-1 bg-gray-200 text-gray-700 rounded-r-lg text-sm" data-hours="12">12 Hours</button>
+                <div class="flex gap-2 flex-wrap">
+                    <div class="btn-group inline-flex">
+                        <button class="time-range-btn px-3 py-1 bg-indigo-600 text-white rounded-l-lg text-sm transition-colors" data-hours="1">1 Hour</button>
+                        <button class="time-range-btn px-3 py-1 bg-gray-200 text-gray-700 text-sm transition-colors" data-hours="2">2 Hours</button>
+                        <button class="time-range-btn px-3 py-1 bg-gray-200 text-gray-700 rounded-r-lg text-sm transition-colors" data-hours="12">12 Hours</button>
                     </div>
                     <select id="raffleSelect" class="px-3 py-1 border border-gray-300 rounded-lg text-sm">
                         <option value="">Select Raffle</option>
@@ -131,6 +130,8 @@
         let currentTimeRange = 1;
         let selectedRaffleId = null;
         let chartRefreshInterval = null;
+        let dashboardRefreshInterval = null;
+        let activeRaffles = [];
 
         // Toast notification system
         const toast = {
@@ -144,7 +145,6 @@
             const container = document.getElementById('toastContainer');
             const toastEl = document.createElement('div');
 
-            // Set colors and icons based on type
             const styles = {
                 success: { bg: 'bg-green-500', icon: '✅' },
                 error: { bg: 'bg-red-500', icon: '❌' },
@@ -162,13 +162,11 @@
 
             container.appendChild(toastEl);
 
-            // Animate in
             setTimeout(() => {
                 toastEl.classList.remove('translate-x-full');
                 toastEl.classList.add('translate-x-0');
             }, 10);
 
-            // Auto remove after 3 seconds
             setTimeout(() => {
                 toastEl.classList.add('opacity-0', 'translate-x-full');
                 setTimeout(() => {
@@ -207,66 +205,112 @@
 
         function initVisitAnalytics() {
             console.log('Initializing visit analytics...');
-    
-            // Show the analytics section once authenticated
-            document.getElementById('visitAnalyticsSection').classList.remove('hidden');
-    
-            // Initialize chart
-            const ctx = document.getElementById('visitChart').getContext('2d');
-            visitChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'Visits',
-                            data: [],
-                            borderColor: 'rgb(59, 130, 246)',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.1
+
+            const analyticsSection = document.getElementById('visitAnalyticsSection');
+            const chartCanvas = document.getElementById('visitChart');
+
+            if (!analyticsSection || !chartCanvas) {
+                console.error('Analytics elements not found');
+                return;
+            }
+
+            analyticsSection.classList.remove('hidden');
+
+            // Initialize chart with better error handling
+            try {
+                const ctx = chartCanvas.getContext('2d');
+                visitChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: 'Visits',
+                                data: [],
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.1,
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointHoverRadius: 5
+                            },
+                            {
+                                label: 'Successful',
+                                data: [],
+                                borderColor: 'rgb(34, 197, 94)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                tension: 0.1,
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointHoverRadius: 5
+                            },
+                            {
+                                label: 'Failed',
+                                data: [],
+                                borderColor: 'rgb(239, 68, 68)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.1,
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointHoverRadius: 5
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
                         },
-                        {
-                            label: 'Successful Purchases',
-                            data: [],
-                            borderColor: 'rgb(34, 197, 94)',
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                            tension: 0.1
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 8,
+                                    font: { size: 11 }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 8,
+                                cornerRadius: 4,
+                                displayColors: true
+                            }
                         },
-                        {
-                            label: 'Failed Purchases',
-                            data: [],
-                            borderColor: 'rgb(239, 68, 68)',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            tension: 0.1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                boxWidth: 12,
-                                font: { size: 11 }
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    font: { size: 10 }
+                                }
+                            },
+                            y: {
+                                display: true,
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0,
+                                    font: { size: 10 }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
                             }
                         }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: { display: false }
-                        },
-                        y: {
-                            display: true,
-                            beginAtZero: true,
-                            ticks: { precision: 0 }
-                        }
                     }
-                }
-            });
-    
+                });
+            } catch (error) {
+                console.error('Failed to initialize chart:', error);
+                toast.error('Failed to initialize analytics chart');
+                return;
+            }
+
             // Set up time range buttons
             document.querySelectorAll('.time-range-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -276,31 +320,41 @@
                     });
                     e.target.classList.remove('bg-gray-200', 'text-gray-700');
                     e.target.classList.add('bg-indigo-600', 'text-white');
-            
+
                     currentTimeRange = parseInt(e.target.dataset.hours);
                     if (selectedRaffleId) {
                         loadChartData();
                     }
                 });
             });
-    
+
             // Set up raffle selector
-            document.getElementById('raffleSelect').addEventListener('change', (e) => {
-                selectedRaffleId = e.target.value;
-                if (selectedRaffleId) {
-                    loadChartData();
-                    startChartAutoRefresh();
-                } else {
-                    stopChartAutoRefresh();
-                    clearChart();
-                }
-            });
+            const raffleSelect = document.getElementById('raffleSelect');
+            if (raffleSelect) {
+                raffleSelect.addEventListener('change', (e) => {
+                    selectedRaffleId = e.target.value;
+                    console.log('Raffle selected:', selectedRaffleId);
+
+                    if (selectedRaffleId) {
+                        loadChartData();
+                        startChartAutoRefresh();
+                    } else {
+                        stopChartAutoRefresh();
+                        clearChart();
+                    }
+                });
+            }
         }
 
-        // Load chart data
+        // Load chart data with improved error handling
         async function loadChartData() {
-            if (!selectedRaffleId) return;
-    
+            if (!selectedRaffleId) {
+                console.log('No raffle selected');
+                return;
+            }
+
+            console.log('Loading chart data - Raffle:', selectedRaffleId, 'Hours:', currentTimeRange);
+
             try {
                 const response = await fetch(`${baseUrl}/api/services/app/VisitAnalytics/GetVisitAnalyticsChartData`, {
                     method: 'POST',
@@ -313,46 +367,79 @@
                         timeRangeHours: currentTimeRange
                     })
                 });
-        
+
                 if (response.ok) {
                     const data = await response.json();
-                    updateChart(data.result);
+                    console.log('Chart data received:', data);
+
+                    if (data.success && data.result) {
+                        updateChart(data.result);
+                    } else {
+                        console.error('Invalid chart data structure:', data);
+                        toast.warning('No data available for selected time range');
+                    }
+                } else if (response.status === 401) {
+                    toast.error('Session expired. Please login again.');
+                    clearAuth();
+                    showLogin();
                 } else {
-                    console.error('Failed to load chart data');
+                    const errorText = await response.text();
+                    console.error('Chart API error:', response.status, errorText);
+                    toast.error('Failed to load chart data');
                 }
             } catch (error) {
                 console.error('Chart load error:', error);
+                toast.error('Connection error loading chart');
             }
         }
 
-        // Update chart with new data
+        // Update chart with better data validation
         function updateChart(data) {
-            if (!data || !visitChart) return;
-    
-            // Update summary cards
-            document.getElementById('chartVisits').textContent = data.totalVisits || 0;
-            document.getElementById('chartSuccess').textContent = data.successfulPurchases || 0;
-            document.getElementById('chartFailed').textContent = data.failedPurchases || 0;
-            document.getElementById('chartConversion').textContent = (data.conversionRate || 0) + '%';
-    
-            // Format time labels
-            const labels = data.dataPoints.map(dp => {
-                const time = new Date(dp.time);
-                return time.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
+            if (!data || !visitChart) {
+                console.error('Invalid data or chart not initialized');
+                return;
+            }
+
+            // Update summary cards with fallback values
+            document.getElementById('chartVisits').textContent = formatNumber(data.totalVisits || 0);
+            document.getElementById('chartSuccess').textContent = formatNumber(data.successfulPurchases || 0);
+            document.getElementById('chartFailed').textContent = formatNumber(data.failedPurchases || 0);
+
+            const conversionRate = data.conversionRate || 0;
+            const conversionEl = document.getElementById('chartConversion');
+            conversionEl.textContent = conversionRate.toFixed(2) + '%';
+
+            // Color code conversion rate
+            conversionEl.classList.remove('text-purple-600', 'text-green-600', 'text-yellow-600', 'text-red-600');
+            if (conversionRate >= 5) {
+                conversionEl.classList.add('text-green-600');
+            } else if (conversionRate >= 3) {
+                conversionEl.classList.add('text-purple-600');
+            } else if (conversionRate >= 1) {
+                conversionEl.classList.add('text-yellow-600');
+            } else {
+                conversionEl.classList.add('text-red-600');
+            }
+
+            // Process data points
+            if (data.dataPoints && Array.isArray(data.dataPoints)) {
+                const labels = data.dataPoints.map(dp => {
+                    const time = new Date(dp.time);
+                    return time.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
                 });
-            });
-    
-            // Update chart data
-            visitChart.data.labels = labels;
-            visitChart.data.datasets[0].data = data.dataPoints.map(dp => dp.visits);
-            visitChart.data.datasets[1].data = data.dataPoints.map(dp => dp.successfulPurchases);
-            visitChart.data.datasets[2].data = data.dataPoints.map(dp => dp.failedPurchases);
-            visitChart.update();
-    
-            document.getElementById('chartLastUpdate').textContent = 
+
+                visitChart.data.labels = labels;
+                visitChart.data.datasets[0].data = data.dataPoints.map(dp => dp.visits || 0);
+                visitChart.data.datasets[1].data = data.dataPoints.map(dp => dp.successfulPurchases || 0);
+                visitChart.data.datasets[2].data = data.dataPoints.map(dp => dp.failedPurchases || 0);
+                visitChart.update('none'); // No animation for updates
+            }
+
+            document.getElementById('chartLastUpdate').textContent =
                 `Last updated: ${new Date().toLocaleTimeString()}`;
         }
 
@@ -363,25 +450,28 @@
                 visitChart.data.datasets.forEach(dataset => {
                     dataset.data = [];
                 });
-                visitChart.update();
+                visitChart.update('none');
             }
-    
+
             document.getElementById('chartVisits').textContent = '0';
             document.getElementById('chartSuccess').textContent = '0';
             document.getElementById('chartFailed').textContent = '0';
             document.getElementById('chartConversion').textContent = '0%';
+            document.getElementById('chartLastUpdate').textContent = 'Never updated';
         }
 
-        // Auto refresh chart every minute
+        // Auto refresh management
         function startChartAutoRefresh() {
             stopChartAutoRefresh();
-            chartRefreshInterval = setInterval(loadChartData, 60000);
+            chartRefreshInterval = setInterval(loadChartData, 60000); // Every minute
+            console.log('Chart auto-refresh started');
         }
 
         function stopChartAutoRefresh() {
             if (chartRefreshInterval) {
                 clearInterval(chartRefreshInterval);
                 chartRefreshInterval = null;
+                console.log('Chart auto-refresh stopped');
             }
         }
 
@@ -407,17 +497,16 @@
                                         <option value="olemiss">Ole Miss</option>
                                         <option value="default">Default</option>
                                     </select>
-                                    <p class="mt-1 text-xs text-gray-500" id="selectedUrl"></p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Username/Email</label>
-                                    <input type="text" id="username" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                                    <input type="text" id="username" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required autocomplete="username">
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                                    <input type="password" id="password" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                                    <input type="password" id="password" class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required autocomplete="current-password">
                                 </div>
 
                                 <button type="submit" id="loginSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
@@ -433,8 +522,6 @@
             `;
 
             document.body.insertAdjacentHTML('beforeend', loginHtml);
-
-            // Handle form submit
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
         }
 
@@ -447,8 +534,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Signing in...';
 
-            const tenantSelect = document.getElementById('tenantSelect');
-            const tenantName = tenantSelect ? tenantSelect.value : '';
+            const tenantName = document.getElementById('tenantSelect').value;
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
@@ -459,8 +545,6 @@
                 return;
             }
 
-            // Normalize URL
-            // Construct URL from tenant name
             const normalizedUrl = `https://${tenantName}.raffleiq.us`;
 
             try {
@@ -475,8 +559,7 @@
 
                 const data = await response.json();
 
-                if (response.ok && data.success && data.result.accessToken) {
-                    // Store tokens
+                if (response.ok && data.success && data.result?.accessToken) {
                     accessToken = data.result.accessToken;
                     refreshToken = data.result.refreshToken;
                     baseUrl = normalizedUrl;
@@ -485,9 +568,7 @@
                     localStorage.setItem('raffleiq_refresh_token', refreshToken);
                     localStorage.setItem('raffleiq_tenant_url', baseUrl);
 
-                    // Remove login modal
                     document.getElementById('loginModal').remove();
-
                     toast.success('Login successful! 🎉');
                     showDashboard();
                 } else {
@@ -496,7 +577,8 @@
                     submitBtn.textContent = originalText;
                 }
             } catch (error) {
-                showError('Connection failed. Check URL and try again.');
+                console.error('Login error:', error);
+                showError('Connection failed. Check your network and try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             }
@@ -513,10 +595,8 @@
         function showDashboard() {
             console.log('Showing dashboard...');
 
-            // Initialize visit analytics
             initVisitAnalytics();
 
-            // Show logout button and tenant info
             document.getElementById('logoutBtn').style.display = 'flex';
             const tenantUrl = new URL(baseUrl).hostname;
             document.getElementById('currentTenant').textContent = `Connected to: ${tenantUrl}`;
@@ -526,31 +606,44 @@
 
             loadData();
 
-            // Auto refresh every 30 seconds
-            setInterval(loadData, 30000);
+            // Auto refresh every 30 seconds - properly manage this interval
+            if (dashboardRefreshInterval) {
+                clearInterval(dashboardRefreshInterval);
+            }
+            dashboardRefreshInterval = setInterval(loadData, 30000);
         }
 
         function logout() {
             console.log('Logging out...');
 
-            // Clear authentication
+            // Clear all intervals
+            stopChartAutoRefresh();
+            if (dashboardRefreshInterval) {
+                clearInterval(dashboardRefreshInterval);
+                dashboardRefreshInterval = null;
+            }
+
             clearAuth();
 
-            // Stop chart refresh
-            stopChartAutoRefresh();
+            // Hide analytics section
+            const analyticsSection = document.getElementById('visitAnalyticsSection');
+            if (analyticsSection) {
+                analyticsSection.classList.add('hidden');
+            }
 
-            // Reset display
             document.getElementById('logoutBtn').style.display = 'none';
             document.getElementById('currentTenant').textContent = '';
             document.getElementById('lastUpdated').textContent = 'Last updated: Never';
             document.getElementById('raffleGrid').classList.add('hidden');
             document.getElementById('loading').classList.remove('hidden');
 
-            // Clear summary cards
             document.getElementById('activeCount').textContent = '-';
             document.getElementById('totalRevenue').textContent = '-';
             document.getElementById('totalTickets').textContent = '-';
             document.getElementById('endingSoon').textContent = '-';
+
+            clearChart();
+            activeRaffles = [];
 
             toast.success('Logged out successfully');
             showLogin();
@@ -568,7 +661,6 @@
                     const data = await response.json();
                     updateSummary(data.result);
                 } else if (response.status === 401) {
-                    // Token expired
                     toast.error('Session expired. Please login again.');
                     clearAuth();
                     showLogin();
@@ -583,7 +675,7 @@
 
             // Load raffles
             try {
-                const response = await fetch(`${baseUrl}/api/services/app/RaffleDashboard/GetActiveRaffles?MaxResultCount=10`, {
+                const response = await fetch(`${baseUrl}/api/services/app/RaffleDashboard/GetActiveRaffles?MaxResultCount=20`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
 
@@ -599,44 +691,65 @@
         }
 
         function updateSummary(metrics) {
-            document.getElementById('activeCount').textContent = metrics.activeRafflesCount || 0;
+            document.getElementById('activeCount').textContent = formatNumber(metrics.activeRafflesCount || 0);
             document.getElementById('totalRevenue').textContent = `$${formatNumber(metrics.totalRevenue || 0)}`;
             document.getElementById('totalTickets').textContent = formatNumber(metrics.ticketsSoldCount || 0);
-            document.getElementById('endingSoon').textContent = metrics.endingSoonCount || 0;
+            document.getElementById('endingSoon').textContent = formatNumber(metrics.endingSoonCount || 0);
         }
 
         function updateRaffles(raffles) {
             const grid = document.getElementById('raffleGrid');
             const loading = document.getElementById('loading');
             const raffleSelect = document.getElementById('raffleSelect');
-            raffleSelect.innerHTML = '<option value="">Select Raffle</option>';
-            loading.classList.add('hidden');
-            grid.classList.remove('hidden');
 
-            if (raffles && raffles.length > 0) {
-                raffles.forEach(raffle => {
+            activeRaffles = raffles || [];
+
+            // Store current selection
+            const currentSelection = raffleSelect?.value;
+
+            // Update raffle selector
+            if (raffleSelect) {
+                raffleSelect.innerHTML = '<option value="">Select Raffle</option>';
+
+                activeRaffles.forEach(raffle => {
                     const option = document.createElement('option');
-                    option.value = raffle.guid || raffle.id; // Use GUID if available
+                    option.value = raffle.guid || '';
                     option.textContent = raffle.eventName;
                     raffleSelect.appendChild(option);
                 });
+
+                // Restore selection if it still exists
+                if (currentSelection && activeRaffles.find(r => r.guid === currentSelection)) {
+                    raffleSelect.value = currentSelection;
+                }
+
+                // Auto-select if only one raffle
+                if (activeRaffles.length === 1 && !selectedRaffleId) {
+                    raffleSelect.value = activeRaffles[0].guid;
+                    selectedRaffleId = activeRaffles[0].guid;
+                    loadChartData();
+                    startChartAutoRefresh();
+                }
             }
 
-            if (!raffles || raffles.length === 0) {
+            loading.classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            if (activeRaffles.length === 0) {
                 grid.innerHTML = '<div class="col-span-full text-center py-12 text-white"><h3 class="text-xl mb-2">No Active Raffles</h3><p>All raffles are currently inactive.</p></div>';
                 return;
             }
 
-            grid.innerHTML = raffles.map(raffle => {
+            grid.innerHTML = activeRaffles.map(raffle => {
                 const now = new Date();
                 const endDate = new Date(raffle.eventEnd);
-                const isEndingSoon = endDate > now && (endDate - now) <= (24 * 60 * 60 * 1000); // 24 hours
+                const isEndingSoon = endDate > now && (endDate - now) <= (24 * 60 * 60 * 1000);
 
                 return `
                 <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-xl hover:shadow-2xl transition-shadow">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">${raffle.eventName}</h3>
+                            <h3 class="text-lg font-bold text-gray-900">${escapeHtml(raffle.eventName)}</h3>
                             <p class="text-sm text-gray-600">ID: ${raffle.id}</p>
                         </div>
                         <span class="px-3 py-1 ${isEndingSoon ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'} rounded-full text-sm">
@@ -650,7 +763,7 @@
                             <div class="text-xs text-gray-600">Revenue</div>
                         </div>
                         <div class="text-center p-3 bg-gray-50 rounded-lg">
-                            <div class="text-xl font-bold text-indigo-600">${raffle.ticketsSold || 0}</div>
+                            <div class="text-xl font-bold text-indigo-600">${formatNumber(raffle.ticketsSold || 0)}</div>
                             <div class="text-xs text-gray-600">Tickets</div>
                         </div>
                     </div>
@@ -660,13 +773,25 @@
                            class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors text-sm">
                             Manage
                         </a>
-                        <button onclick="endSales(${raffle.id}, '${raffle.eventName.replace(/'/g, "\\'")}')"
+                        <button onclick="endSales(${raffle.id}, '${escapeHtml(raffle.eventName).replace(/'/g, "\\'")}')"
                                 class="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded-lg transition-colors text-sm">
                             End Sales
                         </button>
                     </div>
                 </div>
             `;}).join('');
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
         }
 
         async function endSales(raffleId, raffleName) {
@@ -686,7 +811,7 @@
 
                 if (response.ok) {
                     toast.success(`Sales ended for "${raffleName}"`);
-                    loadData(); // Refresh the dashboard
+                    loadData();
                 } else {
                     toast.error('Failed to end sales. Please try again.');
                 }
@@ -695,6 +820,9 @@
                 toast.error('Connection error. Please try again.');
             }
         }
+
+        // Make endSales available globally for onclick handlers
+        window.endSales = endSales;
 
         function formatNumber(num) {
             return new Intl.NumberFormat('en-US', {
@@ -708,6 +836,7 @@
             refreshToken = null;
             localStorage.removeItem('raffleiq_access_token');
             localStorage.removeItem('raffleiq_refresh_token');
+            localStorage.removeItem('raffleiq_tenant_url');
         }
 
         // Initialize when page loads
