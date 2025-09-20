@@ -356,17 +356,18 @@
             console.log('Loading chart data - Raffle:', selectedRaffleId, 'Hours:', currentTimeRange);
 
             try {
-                const response = await fetch(`${baseUrl}/api/services/app/VisitAnalytics/GetVisitAnalyticsChartData`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        raffleId: selectedRaffleId,
-                        timeRangeHours: currentTimeRange
-                    })
+
+                // Use GET with query parameters
+                const params = new URLSearchParams({
+                    raffleId: selectedRaffleId,
+                    timeRangeHours: currentTimeRange
                 });
+
+                const response = await fetch(`${baseUrl}/api/services/app/VisitAnalytics/GetVisitAnalyticsChartData?${params}`, {
+                    method: 'GET',  // Changed from POST to GET
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
 
                 if (response.ok) {
                     const data = await response.json();
