@@ -697,90 +697,104 @@
             document.getElementById('endingSoon').textContent = formatNumber(metrics.endingSoonCount || 0);
         }
 
-        function updateRaffles(raffles) {
-            const grid = document.getElementById('raffleGrid');
-            const loading = document.getElementById('loading');
-            const raffleSelect = document.getElementById('raffleSelect');
-
-            activeRaffles = raffles || [];
-
-            // Store current selection
-            const currentSelection = raffleSelect?.value;
-
-            // Update raffle selector
-            if (raffleSelect) {
-                raffleSelect.innerHTML = '<option value="">Select Raffle</option>';
-
-                activeRaffles.forEach(raffle => {
-                    const option = document.createElement('option');
-                    option.value = raffle.guid || '';
-                    option.textContent = raffle.eventName;
-                    raffleSelect.appendChild(option);
-                });
-
-                // Restore selection if it still exists
-                if (currentSelection && activeRaffles.find(r => r.guid === currentSelection)) {
-                    raffleSelect.value = currentSelection;
-                }
-
-                // Auto-select if only one raffle
-                if (activeRaffles.length === 1 && !selectedRaffleId) {
-                    raffleSelect.value = activeRaffles[0].guid;
-                    selectedRaffleId = activeRaffles[0].guid;
-                    loadChartData();
-                    startChartAutoRefresh();
-                }
-            }
-
-            loading.classList.add('hidden');
-            grid.classList.remove('hidden');
-
-            if (activeRaffles.length === 0) {
-                grid.innerHTML = '<div class="col-span-full text-center py-12 text-white"><h3 class="text-xl mb-2">No Active Raffles</h3><p>All raffles are currently inactive.</p></div>';
-                return;
-            }
-
-            grid.innerHTML = activeRaffles.map(raffle => {
-                const now = new Date();
-                const endDate = new Date(raffle.eventEnd);
-                const isEndingSoon = endDate > now && (endDate - now) <= (24 * 60 * 60 * 1000);
-
-                return `
-                <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-xl hover:shadow-2xl transition-shadow">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">${escapeHtml(raffle.eventName)}</h3>
-                            <p class="text-sm text-gray-600">ID: ${raffle.id}</p>
-                        </div>
-                        <span class="px-3 py-1 ${isEndingSoon ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'} rounded-full text-sm">
-                            ${isEndingSoon ? 'Ending Soon' : 'Active'}
-                        </span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="text-center p-3 bg-gray-50 rounded-lg">
-                            <div class="text-xl font-bold text-indigo-600">$${formatNumber(raffle.totalRevenue || 0)}</div>
-                            <div class="text-xs text-gray-600">Revenue</div>
-                        </div>
-                        <div class="text-center p-3 bg-gray-50 rounded-lg">
-                            <div class="text-xl font-bold text-indigo-600">${formatNumber(raffle.ticketsSold || 0)}</div>
-                            <div class="text-xs text-gray-600">Tickets</div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <a href="${baseUrl}/App/Raffles/Manage/${raffle.encryptedId}" target="_blank"
-                           class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors text-sm">
-                            Manage
-                        </a>
-                        <button onclick="endSales(${raffle.id}, '${escapeHtml(raffle.eventName).replace(/'/g, "\\'")}')"
-                                class="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded-lg transition-colors text-sm">
-                            End Sales
-                        </button>
-                    </div>
-                </div>
-            `;}).join('');
+     function updateRaffles(raffles) {
+    const grid = document.getElementById('raffleGrid');
+    const loading = document.getElementById('loading');
+    const raffleSelect = document.getElementById('raffleSelect');
+    
+    activeRaffles = raffles || [];
+    
+    console.log('Raffles received:', activeRaffles);
+    
+    // Store current selection
+    const currentSelection = raffleSelect?.value;
+    
+    // Update raffle selector
+    if (raffleSelect) {
+        raffleSelect.innerHTML = '<option value="">Select Raffle</option>';
+        
+        activeRaffles.forEach(raffle => {
+            const option = document.createElement('option');
+            option.value = raffle.raffleGuid;  // Use raffleGuid now
+            option.textContent = raffle.eventName;
+            raffleSelect.appendChild(option);
+        });
+        
+        // Restore selection if it still exists
+        if (currentSelection && activeRaffles.find(r => r.raffleGuid === currentSelection)) {
+            raffleSelect.value = currentSelection;
         }
+        
+        // Auto-select if only one raffle
+        if (activeRaffles.length === 1 && !selectedRaffleId) {
+            raffleSelect.value = activeRaffles[0].raffleGuid;
+            selectedRaffleId = activeRaffles[0].raffleGuid;
+            console.log('Auto-selected raffle:', selectedRaffleId);
+            loadChartData();
+            startChartAutoRefresh();
+        } else if (activeRaffles.length === 2) {
+            // Since you have 2 raffles, select the one with tickets sold for testing
+            const raffleWithSales = activeRaffles.find(r => r.ticketsSold > 0);
+            if (raffleWithSales) {
+                raffleSelect.value = raffleWithSales.raffleGuid;
+                selectedRaffleId = raffleWithSales.raffleGuid;
+                console.log('Auto-selected raffle with sales:', selectedRaffleId);
+                loadChartData();
+                startChartAutoRefresh();
+            }
+        }
+    }
+
+    loading.classList.add('hidden');
+    grid.classList.remove('hidden');
+
+    // Rest of your grid rendering code...
+    if (activeRaffles.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-white"><h3 class="text-xl mb-2">No Active Raffles</h3><p>All raffles are currently inactive.</p></div>';
+        return;
+    }
+
+    grid.innerHTML = activeRaffles.map(raffle => {
+        const now = new Date();
+        const endDate = new Date(raffle.eventEnd);
+        const isEndingSoon = endDate > now && (endDate - now) <= (24 * 60 * 60 * 1000);
+
+        return `
+        <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-xl hover:shadow-2xl transition-shadow">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">${escapeHtml(raffle.eventName)}</h3>
+                    <p class="text-sm text-gray-600">ID: ${raffle.id}</p>
+                </div>
+                <span class="px-3 py-1 ${isEndingSoon ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'} rounded-full text-sm">
+                    ${isEndingSoon ? 'Ending Soon' : 'Active'}
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <div class="text-xl font-bold text-indigo-600">$${formatNumber(raffle.totalRevenue || 0)}</div>
+                    <div class="text-xs text-gray-600">Revenue</div>
+                </div>
+                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <div class="text-xl font-bold text-indigo-600">${formatNumber(raffle.ticketsSold || 0)}</div>
+                    <div class="text-xs text-gray-600">Tickets</div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <a href="${baseUrl}/App/Raffles/Manage/${raffle.encryptedId}" target="_blank"
+                   class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors text-sm">
+                    Manage
+                </a>
+                <button onclick="endSales(${raffle.id}, '${escapeHtml(raffle.eventName).replace(/'/g, "\\'")}')"
+                        class="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded-lg transition-colors text-sm">
+                    End Sales
+                </button>
+            </div>
+        </div>
+    `;}).join('');
+}
 
         // Utility function to escape HTML
         function escapeHtml(text) {
