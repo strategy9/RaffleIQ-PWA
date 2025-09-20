@@ -347,52 +347,54 @@
         }
 
         // Load chart data with improved error handling
-        async function loadChartData() {
-            if (!selectedRaffleId) {
-                console.log('No raffle selected');
-                return;
-            }
-
-            console.log('Loading chart data - Raffle:', selectedRaffleId, 'Hours:', currentTimeRange);
-
-            try {
-
-                // Use GET with query parameters
-                const params = new URLSearchParams({
-                    raffleId: selectedRaffleId,
-                    timeRangeHours: currentTimeRange
-                });
-
-                const response = await fetch(`${baseUrl}/api/services/app/VisitAnalytics/GetVisitAnalyticsChartData?${params}`, {
-                    method: 'GET',  // Changed from POST to GET
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Chart data received:', data);
-
-                    if (data.success && data.result) {
-                        updateChart(data.result);
-                    } else {
-                        console.error('Invalid chart data structure:', data);
-                        toast.warning('No data available for selected time range');
-                    }
-                } else if (response.status === 401) {
-                    toast.error('Session expired. Please login again.');
-                    clearAuth();
-                    showLogin();
-                } else {
-                    const errorText = await response.text();
-                    console.error('Chart API error:', response.status, errorText);
-                    toast.error('Failed to load chart data');
-                }
-            } catch (error) {
-                console.error('Chart load error:', error);
-                toast.error('Connection error loading chart');
-            }
+      async function loadChartData() {
+        if (!selectedRaffleId) {
+            console.log('No raffle selected');
+            return;
         }
+    
+        console.log('Loading chart data - Raffle:', selectedRaffleId, 'Hours:', currentTimeRange);
+    
+        try {
+            // Use GET with query parameters
+            const params = new URLSearchParams({
+                raffleId: selectedRaffleId,
+                timeRangeHours: currentTimeRange
+            });
+        
+            const response = await fetch(`${baseUrl}/api/services/app/VisitAnalytics/GetVisitAnalyticsChartData?${params}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+        
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Chart data received:', data);
+            
+                if (data.success && data.result) {
+                    updateChart(data.result);
+                } else {
+                    console.error('Invalid chart data structure:', data);
+                    toast.warning('No data available for selected time range');
+                }
+            } else {
+                const errorText = await response.text();
+                console.error('Chart API error:', response.status, errorText);
+                toast.error('Failed to load chart data');
+            }
+        } catch (error) {
+            console.error('Chart load error:', error);
+            toast.error('Connection error loading chart');
+        }
+    } // Make sure this closing brace exists
+
+
+
+
+
+
 
         // Update chart with better data validation
         function updateChart(data) {
