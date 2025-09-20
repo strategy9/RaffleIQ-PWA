@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎫</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen">
 
@@ -58,6 +59,53 @@
             </div>
         </div>
 
+        <!-- Add this after the Summary Cards section and before the Loading section -->
+        <!-- Visit Analytics Chart -->
+        <div id="visitAnalyticsSection" class="bg-white/95 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-xl hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900">📊 Visit & Purchase Analytics</h3>
+                <div class="flex gap-2">
+                    <div class="btn-group">
+                        <button class="time-range-btn px-3 py-1 bg-indigo-600 text-white rounded-l-lg text-sm" data-hours="1">1 Hour</button>
+                        <button class="time-range-btn px-3 py-1 bg-gray-200 text-gray-700 text-sm" data-hours="2">2 Hours</button>
+                        <button class="time-range-btn px-3 py-1 bg-gray-200 text-gray-700 rounded-r-lg text-sm" data-hours="12">12 Hours</button>
+                    </div>
+                    <select id="raffleSelect" class="px-3 py-1 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select Raffle</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Chart Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="bg-blue-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600" id="chartVisits">0</div>
+                    <div class="text-xs text-gray-600">Visits</div>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600" id="chartSuccess">0</div>
+                    <div class="text-xs text-gray-600">Successful</div>
+                </div>
+                <div class="bg-red-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-red-600" id="chartFailed">0</div>
+                    <div class="text-xs text-gray-600">Failed</div>
+                </div>
+                <div class="bg-purple-50 p-3 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-600" id="chartConversion">0%</div>
+                    <div class="text-xs text-gray-600">Conversion</div>
+                </div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div style="position: relative; height: 300px;">
+                <canvas id="visitChart"></canvas>
+            </div>
+
+            <div class="text-center text-gray-500 text-xs mt-2">
+                Auto-refreshes every minute • <span id="chartLastUpdate">Never updated</span>
+            </div>
+        </div>
+
         <!-- Loading -->
         <div id="loading" class="text-center py-12">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
@@ -79,6 +127,10 @@
         let baseUrl = window.location.origin;
         let accessToken = null;
         let refreshToken = null;
+        let visitChart = null;
+        let currentTimeRange = 1;
+        let selectedRaffleId = null;
+        let chartRefreshInterval = null;
 
         // Toast notification system
         const toast = {
@@ -150,6 +202,186 @@
                 showDashboard();
             } else {
                 showLogin();
+            }
+        }
+
+        function initVisitAnalytics() {
+            console.log('Initializing visit analytics...');
+    
+            // Show the analytics section once authenticated
+            document.getElementById('visitAnalyticsSection').classList.remove('hidden');
+    
+            // Initialize chart
+            const ctx = document.getElementById('visitChart').getContext('2d');
+            visitChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Visits',
+                            data: [],
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Successful Purchases',
+                            data: [],
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Failed Purchases',
+                            data: [],
+                            borderColor: 'rgb(239, 68, 68)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: { display: false }
+                        },
+                        y: {
+                            display: true,
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+    
+            // Set up time range buttons
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.time-range-btn').forEach(b => {
+                        b.classList.remove('bg-indigo-600', 'text-white');
+                        b.classList.add('bg-gray-200', 'text-gray-700');
+                    });
+                    e.target.classList.remove('bg-gray-200', 'text-gray-700');
+                    e.target.classList.add('bg-indigo-600', 'text-white');
+            
+                    currentTimeRange = parseInt(e.target.dataset.hours);
+                    if (selectedRaffleId) {
+                        loadChartData();
+                    }
+                });
+            });
+    
+            // Set up raffle selector
+            document.getElementById('raffleSelect').addEventListener('change', (e) => {
+                selectedRaffleId = e.target.value;
+                if (selectedRaffleId) {
+                    loadChartData();
+                    startChartAutoRefresh();
+                } else {
+                    stopChartAutoRefresh();
+                    clearChart();
+                }
+            });
+        }
+
+        // Load chart data
+        async function loadChartData() {
+            if (!selectedRaffleId) return;
+    
+            try {
+                const response = await fetch(`${baseUrl}/api/services/app/VisitAnalytics/GetVisitAnalyticsChartData`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        raffleId: selectedRaffleId,
+                        timeRangeHours: currentTimeRange
+                    })
+                });
+        
+                if (response.ok) {
+                    const data = await response.json();
+                    updateChart(data.result);
+                } else {
+                    console.error('Failed to load chart data');
+                }
+            } catch (error) {
+                console.error('Chart load error:', error);
+            }
+        }
+
+        // Update chart with new data
+        function updateChart(data) {
+            if (!data || !visitChart) return;
+    
+            // Update summary cards
+            document.getElementById('chartVisits').textContent = data.totalVisits || 0;
+            document.getElementById('chartSuccess').textContent = data.successfulPurchases || 0;
+            document.getElementById('chartFailed').textContent = data.failedPurchases || 0;
+            document.getElementById('chartConversion').textContent = (data.conversionRate || 0) + '%';
+    
+            // Format time labels
+            const labels = data.dataPoints.map(dp => {
+                const time = new Date(dp.time);
+                return time.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            });
+    
+            // Update chart data
+            visitChart.data.labels = labels;
+            visitChart.data.datasets[0].data = data.dataPoints.map(dp => dp.visits);
+            visitChart.data.datasets[1].data = data.dataPoints.map(dp => dp.successfulPurchases);
+            visitChart.data.datasets[2].data = data.dataPoints.map(dp => dp.failedPurchases);
+            visitChart.update();
+    
+            document.getElementById('chartLastUpdate').textContent = 
+                `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+
+        // Clear chart
+        function clearChart() {
+            if (visitChart) {
+                visitChart.data.labels = [];
+                visitChart.data.datasets.forEach(dataset => {
+                    dataset.data = [];
+                });
+                visitChart.update();
+            }
+    
+            document.getElementById('chartVisits').textContent = '0';
+            document.getElementById('chartSuccess').textContent = '0';
+            document.getElementById('chartFailed').textContent = '0';
+            document.getElementById('chartConversion').textContent = '0%';
+        }
+
+        // Auto refresh chart every minute
+        function startChartAutoRefresh() {
+            stopChartAutoRefresh();
+            chartRefreshInterval = setInterval(loadChartData, 60000);
+        }
+
+        function stopChartAutoRefresh() {
+            if (chartRefreshInterval) {
+                clearInterval(chartRefreshInterval);
+                chartRefreshInterval = null;
             }
         }
 
@@ -281,6 +513,9 @@
         function showDashboard() {
             console.log('Showing dashboard...');
 
+            // Initialize visit analytics
+            initVisitAnalytics();
+
             // Show logout button and tenant info
             document.getElementById('logoutBtn').style.display = 'flex';
             const tenantUrl = new URL(baseUrl).hostname;
@@ -300,6 +535,9 @@
 
             // Clear authentication
             clearAuth();
+
+            // Stop chart refresh
+            stopChartAutoRefresh();
 
             // Reset display
             document.getElementById('logoutBtn').style.display = 'none';
@@ -370,9 +608,19 @@
         function updateRaffles(raffles) {
             const grid = document.getElementById('raffleGrid');
             const loading = document.getElementById('loading');
-
+            const raffleSelect = document.getElementById('raffleSelect');
+            raffleSelect.innerHTML = '<option value="">Select Raffle</option>';
             loading.classList.add('hidden');
             grid.classList.remove('hidden');
+
+            if (raffles && raffles.length > 0) {
+                raffles.forEach(raffle => {
+                    const option = document.createElement('option');
+                    option.value = raffle.guid || raffle.id; // Use GUID if available
+                    option.textContent = raffle.eventName;
+                    raffleSelect.appendChild(option);
+                });
+            }
 
             if (!raffles || raffles.length === 0) {
                 grid.innerHTML = '<div class="col-span-full text-center py-12 text-white"><h3 class="text-xl mb-2">No Active Raffles</h3><p>All raffles are currently inactive.</p></div>';
